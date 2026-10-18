@@ -1,0 +1,18 @@
+[project]
+name = "roadtwin-x"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.135,<1",
+    "pydantic>=2.8,<3",
+    "SQLAlchemy>=2.0,<3",
+]
+
+[tool.vercel]
+entrypoint = "main:app"
+
+[tool.vercel.scripts]
+build = "npm --prefix frontend ci && npm --prefix frontend run build"
+
+[tool.vercel.fastapi.static]
+cdn = true
