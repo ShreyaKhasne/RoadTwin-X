@@ -49,6 +49,23 @@
   cursor: wait;
 }
 
+.share-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 36px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border: 1px solid #466349;
+  background: #172019;
+  color: #a8d5ae;
+  font: 10px "DM Mono";
+  box-shadow: 0 8px 26px #0008;
+  pointer-events: none;
+}
+
 @media (max-width: 760px) {
   body {
     min-width: 0;
@@ -187,6 +204,11 @@
     align-items: flex-start;
     flex-direction: column;
     padding: 9px 12px;
+  }
+
+  .share-toast {
+    right: 10px;
+    bottom: 10px;
   }
 
   .statusbar {

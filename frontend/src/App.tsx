@@ -42,6 +42,7 @@ export default function App() {
   const [riskIncrease, setRiskIncrease] = useState(0);
   const [visibility, setVisibility] = useState<Visibility>({ vehicles: true, pedestrians: true, signals: true, buildings: true });
   const [savedMessage, setSavedMessage] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -248,12 +249,12 @@ export default function App() {
     try {
       if (navigator.share) {
         await navigator.share({ title: "RoadTwin X scenario", text: "Open this RoadTwin X scenario.", url });
-        setSavedMessage("Scenario link shared");
+        setShareMessage("Scenario link shared");
       } else {
         await navigator.clipboard.writeText(url);
-        setSavedMessage("Scenario link copied");
+        setShareMessage("Scenario link copied");
       }
-      window.setTimeout(() => setSavedMessage(""), 3500);
+      window.setTimeout(() => setShareMessage(""), 3500);
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === "AbortError") return;
       setError(reason instanceof Error ? reason.message : "Could not share the scenario link.");
@@ -316,6 +317,7 @@ export default function App() {
         <button className="icon-button help-button" aria-label="About this model" title="This is a synthetic, uncalibrated demonstration"><CircleHelp size={16} /></button>
       </header>
 
+      {shareMessage && <div className="share-toast" role="status" aria-live="polite"><Check size={14} />{shareMessage}</div>}
       {isSharedScenario && (
         <div className="shared-scenario-banner">
           <span><Share2 size={14} /> Shared setup loaded. Run an experiment to compare; edits to this copy stay local to your browser.</span>
