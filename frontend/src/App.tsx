@@ -2,11 +2,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity, AlertTriangle, ArrowDownToLine, BarChart3, Bot, Building2, Check, ChevronDown,
   CircleHelp, CloudDownload, Database, Download, Gauge, Layers3, Map, Pause, Play,
-  RotateCcw, Save, ShieldCheck, SlidersHorizontal, Sparkles,
+  RotateCcw, Save, Share2, ShieldCheck, SlidersHorizontal, Sparkles,
   StepForward, TrafficCone, TriangleAlert, Upload, Waypoints, X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./services/api";
+import { createScenarioShareUrl, readSharedScenario } from "./services/scenarioShare";
 import { TrafficScene } from "./scene/TrafficScene";
 import { selectedPlan, useRoadTwin } from "./store/useRoadTwin";
 import type { Experiment, Road, RoadNetwork } from "./types";
@@ -24,6 +25,17 @@ export default function App() {
     setReports, setScenarios, selectedCandidate, setSelectedCandidate,
     busy, setBusy, error, setError,
   } = useRoadTwin();
+  const [initialSharedLink] = useState(() => {
+    try {
+      return { scenario: readSharedScenario(window.location.hash), error: null as string | null };
+    } catch (reason) {
+      return {
+        scenario: null,
+        error: reason instanceof Error ? reason.message : "Could not read the shared scenario link.",
+      };
+    }
+  });
+  const [isSharedScenario, setIsSharedScenario] = useState(Boolean(initialSharedLink.scenario));
   const [objectiveText, setObjectiveText] = useState(DEFAULT_OBJECTIVE);
   const [budget, setBudget] = useState(30000);
   const [targetReduction, setTargetReduction] = useState(30);
@@ -33,9 +45,18 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    api.getNetwork()
-      .then((value) => { if (active) setNetwork(value); })
-      .catch((reason: Error) => { if (active) setError(reason.message); });
+    if (initialSharedLink.scenario) {
+      setNetwork(initialSharedLink.scenario.network);
+      setObjectiveText(initialSharedLink.scenario.objective.text);
+      setBudget(initialSharedLink.scenario.objective.budget);
+      setTargetReduction(initialSharedLink.scenario.objective.target_delay_reduction_pct);
+      setRiskIncrease(initialSharedLink.scenario.objective.max_risk_increase_pct);
+    } else {
+      api.getNetwork()
+        .then((value) => { if (active) setNetwork(value); })
+        .catch((reason: Error) => { if (active) setError(reason.message); });
+      if (initialSharedLink.error) setError(initialSharedLink.error);
+    }
     api.getReports()
       .then((value) => { if (active) setReports(value); })
       .catch((reason: Error) => { if (active) setError(reason.message); });
@@ -43,7 +64,7 @@ export default function App() {
       .then((value) => { if (active) setScenarios(value); })
       .catch((reason: Error) => { if (active) setError(reason.message); });
     return () => { active = false; };
-  }, [setNetwork, setReports, setScenarios, setError]);
+  }, [initialSharedLink, setNetwork, setReports, setScenarios, setError]);
 
   const chosenRoad = network?.roads.find((road) => road.id === selectedRoad) ?? network?.roads[0];
   const baseline = experiment?.baseline.metrics;
@@ -88,7 +109,9 @@ export default function App() {
       roads: network.roads.map((road) => road.id === selectedRoad ? { ...road, [field]: value } : road),
     };
     setNetwork(updated);
-    api.updateNetwork(updated).catch((reason: Error) => setError(reason.message));
+    if (!isSharedScenario) {
+      api.updateNetwork(updated).catch((reason: Error) => setError(reason.message));
+    }
   };
 
   const importNetwork = async (file: File): Promise<boolean> => {
@@ -96,10 +119,10 @@ export default function App() {
     try {
       const text = await file.text();
       const imported = parseNetworkFile(file.name, text, network);
-      const saved = await api.updateNetwork(imported);
+      const saved = isSharedScenario ? imported : await api.updateNetwork(imported);
       setNetwork(saved);
       setError(null);
-      setSavedMessage(`Imported ${saved.roads.length} road approaches`);
+      setSavedMessage(`Imported ${saved.roads.length} road approaches${isSharedScenario ? " locally" : ""}`);
       window.setTimeout(() => setSavedMessage(""), 3500);
       return true;
     } catch (reason) {
@@ -204,6 +227,61 @@ export default function App() {
     }
   };
 
+  const shareScenario = async () => {
+    if (!network) return;
+    const url = createScenarioShareUrl(window.location.href, network, {
+      text: objectiveText,
+      budget,
+      target_delay_reduction_pct: targetReduction,
+      max_risk_increase_pct: riskIncrease,
+      weights: {
+        delay: 0.35,
+        queue: 0.15,
+        travel_time: 0.15,
+        throughput: 0.15,
+        pedestrian_risk: 0.15,
+        cost: 0.05,
+      },
+    });
+    window.history.replaceState(null, "", url);
+    setIsSharedScenario(true);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "RoadTwin X scenario", text: "Open this RoadTwin X scenario.", url });
+        setSavedMessage("Scenario link shared");
+      } else {
+        await navigator.clipboard.writeText(url);
+        setSavedMessage("Scenario link copied");
+      }
+      window.setTimeout(() => setSavedMessage(""), 3500);
+    } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") return;
+      setError(reason instanceof Error ? reason.message : "Could not share the scenario link.");
+    }
+  };
+
+  const resetSharedScenario = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const value = await api.getNetwork();
+      setNetwork(value);
+      setExperiment(null);
+      setSelectedCandidate(null);
+      setTab("workbench");
+      setObjectiveText(DEFAULT_OBJECTIVE);
+      setBudget(30000);
+      setTargetReduction(30);
+      setRiskIncrease(0);
+      setIsSharedScenario(false);
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not reload the public demo network.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggleVisibility = (key: keyof Visibility) =>
     setVisibility((current) => ({ ...current, [key]: !current[key] }));
 
@@ -238,6 +316,12 @@ export default function App() {
         <button className="icon-button help-button" aria-label="About this model" title="This is a synthetic, uncalibrated demonstration"><CircleHelp size={16} /></button>
       </header>
 
+      {isSharedScenario && (
+        <div className="shared-scenario-banner">
+          <span><Share2 size={14} /> Shared setup loaded. Run an experiment to compare; edits to this copy stay local to your browser.</span>
+          <button onClick={() => void resetSharedScenario()} disabled={busy}>RESET TO PUBLIC DEMO</button>
+        </div>
+      )}
       {error && <div className="error-banner"><AlertTriangle size={15} /><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError(null)}><X size={15} /></button></div>}
 
       <div className="workspace">
@@ -261,7 +345,7 @@ export default function App() {
           {tab === "reports" ? (
             <ReportsView reports={reports} onExport={exportReport} />
           ) : tab === "data" ? (
-            <DataManager network={network} onImport={importNetwork} onExport={exportNetwork} />
+            <DataManager network={network} onImport={importNetwork} onExport={exportNetwork} localOnly={isSharedScenario} />
           ) : tab === "analytics" ? (
             <AnalyticsView experiment={experiment} />
           ) : (
@@ -270,6 +354,7 @@ export default function App() {
                 <div><span className="eyebrow">LIVE DIGITAL TWIN / INTERSECTION 01</span><h1>{network.name}</h1><p>4 APPROACHES <b>·</b> SIGNALIZED <b>·</b> PEAK DEMAND SCENARIO</p></div>
                 <div className="scene-heading-right">
                   <div className="live-pill"><span className="status-dot" />{playing ? "LIVE SIMULATION" : "SIMULATION PAUSED"}</div>
+                  <button className="share-action" onClick={() => void shareScenario()}><Share2 size={14} /> SHARE SCENARIO</button>
                   <button className="scene-action" onClick={() => void runExperiments()} disabled={busy}><Sparkles size={14} /> AI EXPERIMENT</button>
                 </div>
               </div>
@@ -459,18 +544,18 @@ function AnalyticsView({ experiment }: { experiment: Experiment | null }) {
   );
 }
 
-function DataManager({ network, onImport, onExport }: { network: RoadNetwork; onImport: (file: File) => Promise<boolean>; onExport: (format: "json" | "csv" | "geojson") => void }) {
+function DataManager({ network, onImport, onExport, localOnly }: { network: RoadNetwork; onImport: (file: File) => Promise<boolean>; onExport: (format: "json" | "csv" | "geojson") => void; localOnly: boolean }) {
   const [message, setMessage] = useState("");
   const handleFile = async (file: File) => {
     setMessage(`Importing ${file.name}…`);
     const saved = await onImport(file);
-    setMessage(saved ? `Imported and saved ${file.name}.` : `Import failed. Review the error message above.`);
+    setMessage(saved ? `Imported ${file.name}${localOnly ? " into this shared copy." : " and saved."}` : "Import failed. Review the error message above.");
   };
   return (
     <section className="reports-view data-view">
       <div className="results-heading"><div><span className="eyebrow">NETWORK CONFIGURATION / DATA EXCHANGE</span><h2>Data manager</h2><p>Import and export road-network configuration and supported approach attributes.</p></div><span className="results-badge"><Database size={12} /> {network.roads.length} ROAD EDGES</span></div>
       <div className="data-manager-grid">
-        <article className="data-card"><div className="data-card-icon"><Upload size={18} /></div><h3>Import network data</h3><p>Load a RoadTwin network JSON, GeoJSON FeatureCollection, or road-approach CSV. The API validates before saving.</p><label className="outline-button upload-button"><Upload size={14} /> CHOOSE FILE<input type="file" accept=".json,.geojson,.csv,application/json,text/csv,application/geo+json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.target.value = ""; }} /></label><small className="data-hint">CSV headers: id, label, length_m, lanes, speed_kmh, demand_vph, pedestrian_flow, risk_factor, condition.</small>{message && <small className="data-hint">{message}</small>}</article>
+        <article className="data-card"><div className="data-card-icon"><Upload size={18} /></div><h3>Import network data</h3><p>Load a RoadTwin network JSON, GeoJSON FeatureCollection, or road-approach CSV. {localOnly ? "Imports apply only to this shared copy." : "The API validates before saving."}</p><label className="outline-button upload-button"><Upload size={14} /> CHOOSE FILE<input type="file" accept=".json,.geojson,.csv,application/json,text/csv,application/geo+json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.target.value = ""; }} /></label><small className="data-hint">CSV headers: id, label, length_m, lanes, speed_kmh, demand_vph, pedestrian_flow, risk_factor, condition.</small>{message && <small className="data-hint">{message}</small>}</article>
         <article className="data-card"><div className="data-card-icon"><Download size={18} /></div><h3>Export data</h3><p>Download the current network and synthetic geometry. GeoJSON coordinates are fictional demonstration values, not survey locations.</p><div className="export-actions"><button className="outline-button" onClick={() => onExport("json")}>JSON</button><button className="outline-button" onClick={() => onExport("csv")}>CSV</button><button className="outline-button" onClick={() => onExport("geojson")}>GEOJSON</button></div></article>
       </div>
       <div className="analytics-chart-card network-table-card">
@@ -479,7 +564,7 @@ function DataManager({ network, onImport, onExport }: { network: RoadNetwork; on
           {network.roads.map((road) => <div className="approach-row" key={road.id}><span>{road.label}</span><b>{road.lanes}</b><b>{number(road.demand_vph, 0)} veh/h</b><b>{road.speed_kmh} km/h</b></div>)}
         </div>
       </div>
-      <div className="assumption-note"><AlertTriangle size={14} /><span>Imported network changes persist through the local API. Verify geometry, counts, signal plans, and safety before real-world use.</span></div>
+      <div className="assumption-note"><AlertTriangle size={14} /><span>{localOnly ? "Shared scenario edits remain in this browser and are not written to the public network." : "Imported network changes persist through the local API."} Verify geometry, counts, signal plans, and safety before real-world use.</span></div>
     </section>
   );
 }

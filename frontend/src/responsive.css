@@ -1,0 +1,243 @@
+.share-action {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border: 1px solid #384340;
+  background: transparent;
+  color: #aab6b0;
+  font: 600 9px "DM Mono";
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.share-action:hover {
+  border-color: #66766f;
+  color: #e2e8e2;
+}
+
+.shared-scenario-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 18px;
+  border-bottom: 1px solid #39432f;
+  background: #171a13;
+  color: #c9d2bd;
+  font: 10px "DM Mono";
+}
+
+.shared-scenario-banner span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shared-scenario-banner button {
+  padding: 6px 9px;
+  border: 1px solid #645637;
+  background: transparent;
+  color: #e4c57f;
+  font: 8px "DM Mono";
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.shared-scenario-banner button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+@media (max-width: 760px) {
+  body {
+    min-width: 0;
+  }
+
+  .topbar {
+    height: auto;
+    min-height: 58px;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 9px 12px 0;
+  }
+
+  .brand-lockup {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .main-nav {
+    order: 3;
+    width: 100%;
+    height: 38px;
+    margin-left: 0;
+    justify-content: space-between;
+    gap: 14px;
+    overflow-x: auto;
+  }
+
+  .main-nav button {
+    flex: none;
+    padding: 2px 1px 0;
+    white-space: nowrap;
+  }
+
+  .help-button {
+    padding: 6px;
+  }
+
+  .workspace {
+    min-height: 0;
+  }
+
+  .tool-rail {
+    width: 46px;
+    padding-top: 8px;
+  }
+
+  .rail-button {
+    width: 40px;
+    height: 43px;
+  }
+
+  .rail-button span,
+  .rail-bottom span {
+    font-size: 6px;
+  }
+
+  .main-content {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .scene-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .scene-heading h1 {
+    font-size: 19px;
+  }
+
+  .scene-heading-right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .scene-action,
+  .share-action {
+    padding: 8px 9px;
+    font-size: 8px;
+  }
+
+  .workbench-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .viewport-panel,
+  .inspector-panel {
+    min-height: 0;
+  }
+
+  .viewport-canvas {
+    height: min(58vh, 420px);
+    min-height: 260px;
+  }
+
+  .inspector-panel {
+    overflow: visible;
+  }
+
+  .inspector-scroll {
+    max-height: none;
+  }
+
+  .timeline {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .timeline-track-wrap {
+    min-width: calc(100% - 120px);
+  }
+
+  .results-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .results-table-wrap,
+  .approach-table {
+    overflow-x: auto;
+  }
+
+  .results-table {
+    min-width: 720px;
+  }
+
+  .data-manager-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shared-scenario-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 9px 12px;
+  }
+
+  .statusbar {
+    height: auto;
+    min-height: 24px;
+    flex-wrap: wrap;
+    gap: 7px 12px;
+    padding: 7px 10px;
+    font-size: 6px;
+  }
+
+  .statusbar-right {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .brand-lockup strong {
+    font-size: 12px;
+  }
+
+  .brand-lockup small {
+    font-size: 7px;
+  }
+
+  .live-pill {
+    padding: 7px;
+    font-size: 7px;
+  }
+
+  .scene-action,
+  .share-action {
+    gap: 5px;
+    padding: 7px;
+    font-size: 7px;
+  }
+
+  .viewport-topline {
+    padding: 0 8px;
+    font-size: 7px;
+  }
+
+  .scene-overlay {
+    gap: 6px;
+    padding: 6px;
+    font-size: 7px;
+  }
+
+  .scene-legend {
+    gap: 7px;
+    padding: 6px;
+    font-size: 6px;
+  }
+}
